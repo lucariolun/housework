@@ -91,6 +91,22 @@
   <div class="task"><div class="task-btn" onclick="doneTask('拭き掃除','2番窓')">2番窓</div><div class="date-label" id="label-拭き掃除-2番窓"></div></div>
 </div>
 
+<h2>今日の気分</h2>
+<div id="moodArea" style="font-size: 30px; margin-bottom: 10px;">
+  <span class="mood" data-mood="good" style="cursor:pointer;">🙂</span>
+  <span class="mood" data-mood="normal" style="cursor:pointer;">😐</span>
+  <span class="mood" data-mood="bad" style="cursor:pointer;">😣</span>
+</div>
+
+<h2>今日の気づき</h2>
+<textarea id="memoShort" rows="3"
+  style="width:100%; font-size:14px;"></textarea>
+
+<h2>今日の日記</h2>
+<textarea id="memoLong" rows="8"
+  style="width:100%; font-size:14px; background:#fff8dc;"></textarea>
+
+  
 <script>
 let currentDate = new Date();
 
@@ -148,7 +164,76 @@ document.body.addEventListener("touchend", e => {
 });
 
 loadPage();
+
+// ★ メモの読み込み
+function loadMemo() {
+  const key = currentDate.toISOString().slice(0,10);
+  const memo = JSON.parse(localStorage.getItem("memo-" + key) || "{}");
+
+  document.getElementById("memoShort").value = memo.short || "";
+  document.getElementById("memoLong").value = memo.long || "";
+
+  // 気分の反映
+  currentMood = memo.mood || null;
+  document.querySelectorAll(".mood").forEach(m => m.style.opacity = 0.3);
+  if (currentMood) {
+    const selected = document.querySelector(`.mood[data-mood="${currentMood}"]`);
+    if (selected) selected.style.opacity = 1;
+  }
+}
+
+// ★ メモの保存（自動）
+function saveMemo() {
+  const key = currentDate.toISOString().slice(0,10);
+  const memo = {
+    short: document.getElementById("memoShort").value,
+    long: document.getElementById("memoLong").value,
+    mood: currentMood
+  };
+  localStorage.setItem("memo-" + key, JSON.stringify(memo));
+}
+
+// ★ 気分選択
+let currentMood = null;
+document.querySelectorAll(".mood").forEach(m => {
+  m.addEventListener("click", () => {
+    currentMood = m.dataset.mood;
+
+    // 見た目の更新
+    document.querySelectorAll(".mood").forEach(x => x.style.opacity = 0.3);
+    m.style.opacity = 1;
+
+    saveMemo();
+  });
+});
+
+// ★ 気づき欄に「・」自動挿入
+document.getElementById("memoShort").addEventListener("input", function(e) {
+  let text = this.value;
+
+  // 入力開始時に「・」を付ける
+  if (text.length === 1 && text !== "・") {
+    this.value = "・" + text;
+  }
+
+  // 改行ごとに「・」を付ける
+  this.value = this.value.replace(/\n(?!・)/g, "\n・");
+
+  saveMemo();
+});
+
+// ★ 日記欄も自動保存
+document.getElementById("memoLong").addEventListener("input", saveMemo);
+
+// ★ ページ読み込み時にメモも読み込む
+const originalLoadPage = loadPage;
+loadPage = function() {
+  originalLoadPage();
+  loadMemo();
+};
+  
 </script>
 
 </body>
+
 </html>
