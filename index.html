@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>1日1ページタスク管理</title>
+<style>
+  body {
+    font-family: sans-serif;
+    padding: 20px;
+    background: #fafafa;
+  }
+  h1 {
+    text-align: center; 
+    margin-bottom: 20px;
+  }
+  h2 {
+    margin-top: 25px;
+    border-left: 6px solid #4CAF50;
+    padding-left: 10px;
+  }
+  .task-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    margin-bottom: 10px;
+  }
+  .task {
+    text-align: center;
+  }
+  .task-btn {
+    padding: 10px 16px;
+    background: #e0f7fa;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid #aaa;
+    min-width: 80px;
+  }
+  .task-btn:hover {
+    background: #b2ebf2;
+  }
+  .date-label {
+    font-size: 12px;
+    color: #555;
+    margin-top: 2px;
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+
+<h1 id="dateDisplay"></h1>
+
+<!-- ===== そうじき ===== -->
+<h2>そうじき</h2>
+<div class="task-group">
+  <div class="task"><div class="task-btn" onclick="doneTask('そうじき','リビング')">リビング</div><div class="date-label" id="label-そうじき-リビング"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('そうじき','ろうか')">ろうか</div><div class="date-label" id="label-そうじき-ろうか"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('そうじき','玄関')">玄関</div><div class="date-label" id="label-そうじき-玄関"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('そうじき','直の部屋')">直の部屋</div><div class="date-label" id="label-そうじき-直の部屋"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('そうじき','2番')">2番</div><div class="date-label" id="label-そうじき-2番"></div></div>
+</div>
+
+<!-- ===== 洗い ===== -->
+<h2>清掃</h2>
+<div class="task-group">
+  <div class="task"><div class="task-btn" onclick="doneTask('洗い','キッチン')">キッチン</div><div class="date-label" id="label-洗い-キッチン"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('洗い','洗面所')">洗面所</div><div class="date-label" id="label-洗い-洗面所"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('洗い','風呂')">風呂</div><div class="date-label" id="label-洗い-風呂"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('洗い','トイレ')">トイレ</div><div class="date-label" id="label-洗い-トイレ"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('洗い','洗濯機')">洗濯機</div><div class="date-label" id="label-洗い-洗濯機"></div></div>
+</div>
+
+<!-- ===== 交換 ===== -->
+<h2>交換（排水溝ネットなど）</h2>
+<div class="task-group">
+  <div class="task"><div class="task-btn" onclick="doneTask('交換','キッチン')">キッチン</div><div class="date-label" id="label-交換-キッチン"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('交換','洗面所')">洗面所</div><div class="date-label" id="label-交換-洗面所"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('交換','風呂')">風呂</div><div class="date-label" id="label-交換-風呂"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('交換','スポンジ')">スポンジ</div><div class="date-label" id="label-交換-スポンジ"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('交換','浄水')">浄水</div><div class="date-label" id="label-交換-浄水"></div></div>
+</div>
+
+<!-- ===== 拭き掃除 ===== -->
+<h2>拭き掃除</h2>
+<div class="task-group">
+  <div class="task"><div class="task-btn" onclick="doneTask('拭き掃除','ダイニング')">ダイニング</div><div class="date-label" id="label-拭き掃除-ダイニング"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('拭き掃除','キッチン棚')">キッチン棚</div><div class="date-label" id="label-拭き掃除-キッチン棚"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('拭き掃除','冷蔵庫')">冷蔵庫</div><div class="date-label" id="label-拭き掃除-冷蔵庫"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('拭き掃除','リビング窓')">リビング窓</div><div class="date-label" id="label-拭き掃除-リビング窓"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('拭き掃除','直の部屋窓')">直の部屋窓</div><div class="date-label" id="label-拭き掃除-直の部屋窓"></div></div>
+  <div class="task"><div class="task-btn" onclick="doneTask('拭き掃除','2番窓')">2番窓</div><div class="date-label" id="label-拭き掃除-2番窓"></div></div>
+</div>
+
+<script>
+let currentDate = new Date();
+
+function formatDate(d) {
+  const w = ["日","月","火","水","木","金","土"];
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${w[d.getDay()]}）`;
+}
+
+function loadPage() {
+  document.getElementById("dateDisplay").textContent = formatDate(currentDate);
+
+  const key = currentDate.toISOString().slice(0,10);
+  const data = JSON.parse(localStorage.getItem(key) || "{}");
+
+  document.querySelectorAll(".date-label").forEach(label => label.textContent = "");
+
+  for (const id in data) {
+    const label = document.getElementById("label-" + id);
+    if (label) label.textContent = data[id];
+  }
+}
+
+function doneTask(category, item) {
+  const key = currentDate.toISOString().slice(0,10);
+  const data = JSON.parse(localStorage.getItem(key) || "{}");
+
+  const todayStr = `${currentDate.getMonth()+1}/${currentDate.getDate()}`;
+  const id = `${category}-${item}`;
+  const label = document.getElementById("label-" + id);
+
+  // すでに同じ日付が入っていたら「取り消し」
+  if (data[id] === todayStr) {
+    delete data[id];
+    if (label) label.textContent = "";
+  } else {
+    // 新しく登録 or 上書き
+    data[id] = todayStr;
+    if (label) label.textContent = todayStr;
+  }
+
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+let startX = 0;
+document.body.addEventListener("touchstart", e => startX = e.touches[0].clientX);
+document.body.addEventListener("touchend", e => {
+  const endX = e.changedTouches[0].clientX;
+  if (endX - startX > 80) {
+    currentDate.setDate(currentDate.getDate() - 1);
+    loadPage();
+  } else if (startX - endX > 80) {
+    currentDate.setDate(currentDate.getDate() + 1);
+    loadPage();
+  }
+});
+
+loadPage();
+</script>
+
+</body>
+</html>
