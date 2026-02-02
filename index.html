@@ -91,22 +91,6 @@
   <div class="task"><div class="task-btn" onclick="doneTask('拭き掃除','2番窓')">2番窓</div><div class="date-label" id="label-拭き掃除-2番窓"></div></div>
 </div>
 
-<h2>今日の気分</h2>
-<div id="moodArea" style="font-size: 30px; margin-bottom: 10px;">
-  <span class="mood" data-mood="good" style="cursor:pointer;">🙂</span>
-  <span class="mood" data-mood="normal" style="cursor:pointer;">😐</span>
-  <span class="mood" data-mood="bad" style="cursor:pointer;">😣</span>
-</div>
-
-<h2>今日の気づき</h2>
-<textarea id="memoShort" rows="3"
-  style="width:100%; font-size:14px;"></textarea>
-
-<h2>今日の日記</h2>
-<textarea id="memoLong" rows="8"
-  style="width:100%; font-size:14px; background:#fff8dc;"></textarea>
-
-  
 <script>
 let currentDate = new Date();
 
@@ -164,7 +148,26 @@ document.body.addEventListener("touchend", e => {
 });
 
 loadPage();
+</script>
 
+<!-- ★★★ ここから下を前回コードの最後に追加 ★★★ -->
+
+<h2>今日の気分</h2>
+<div id="moodArea" style="font-size: 30px; margin-bottom: 10px;">
+  <span class="mood" data-mood="good" style="cursor:pointer;">🙂</span>
+  <span class="mood" data-mood="normal" style="cursor:pointer;">😐</span>
+  <span class="mood" data-mood="bad" style="cursor:pointer;">😣</span>
+</div>
+
+<h2>今日の気づき</h2>
+<textarea id="memoShort" rows="3"
+  style="width:100%; font-size:14px;"></textarea>
+
+<h2>今日の日記</h2>
+<textarea id="memoLong" rows="8"
+  style="width:100%; font-size:14px; background:#fff8dc;"></textarea>
+
+<script>
 // ★ メモの読み込み
 function loadMemo() {
   const key = currentDate.toISOString().slice(0,10);
@@ -231,9 +234,7 @@ loadPage = function() {
   originalLoadPage();
   loadMemo();
 };
-  
 </script>
 
 </body>
-
 </html>
