@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>献立記録</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #fafafa;
+    }
+
+    .days-wrapper {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      width: 100%;
+      height: 100vh;
+    }
+
+    .day-page {
+      min-width: 100%;
+      scroll-snap-align: start;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+
+    .header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .date-text {
+      font-size: 22px;
+      font-weight: bold;
+      color: #444;
+    }
+
+    .add-btn {
+      font-size: 28px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #666;
+    }
+
+    .csv-btn {
+      font-size: 12px;
+      padding: 4px 8px;
+      background: none;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      color: #888;
+      cursor: pointer;
+    }
+
+    .cards {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .meal-card {
+      position: relative;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      min-height: 100px;
+    }
+
+    .morning { background: #fffbe6; }
+    .noon    { background: #e6f7ff; }
+    .night   { background: #e6fff2; }
+
+    .meal-type-label {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 14px;
+      color: #666;
+      opacity: 0.7;
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      font-size: 18px;
+      color: #888;
+      cursor: pointer;
+    }
+
+    .dish-name {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #f0f0f0;
+      padding: 4px 10px;
+      border-radius: 12px;
+      margin: 2px;
+      font-size: 13px;
+      color: #555;
+    }
+
+    .memo {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #444;
+      line-height: 1.4;
+    }
+
+    .stars {
+      color: #f5b700;
+      font-size: 20px;
+      margin-bottom: 6px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 85%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .meal-select button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #eee;
+    }
+
+    .meal-select .active {
+      background: #8fd19e;
+      color: white;
+    }
+
+    .rating-input span {
+      font-size: 26px;
+      cursor: pointer;
+      color: #ccc;
+    }
+
+    .rating-input .active {
+      color: #f5b700;
+    }
+
+    .modal-content input,
+    .modal-content textarea {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    .save-btn {
+      background: #8fd19e;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .cancel-btn {
+      background: #ddd;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="days-wrapper">
+
+    <div class="day-page" data-date="2026-02-03">
+      <div class="header">
+        <div class="date-text">2/3（火）</div>
+        <button class="add-btn" onclick="openModal('2026-02-03')">＋</button>
+        <button class="csv-btn" onclick="exportCSV()">CSV</button>
+      </div>
+      <div class="cards" id="cards-2026-02-03"></div>
+    </div>
+
+    <div class="day-page" data-date="2026-02-04">
+      <div class="header">
+        <div class="date-text">2/4（水）</div>
+        <button class="add-btn" onclick="openModal('2026-02-04')">＋</button>
+        <button class="csv-btn" onclick="exportCSV()">CSV</button>
+      </div>
+      <div class="cards" id="cards-2026-02-04"></div>
+    </div>
+
+  </div>
+
+  <div id="modal" class="modal">
+    <div class="modal-content">
+
+      <div class="meal-select">
+        <button id="btn-morning" onclick="selectMeal('morning')">朝</button>
+        <button id="btn-noon" onclick="selectMeal('noon')">昼</button>
+        <button id="btn-night" class="active" onclick="selectMeal('night')">夜</button>
+      </div>
+
+      <input type="text" id="input-dish" placeholder="料理名">
+      <input type="text" id="input-ingredients" placeholder="材料（スペース区切り）">
+      <textarea id="input-memo" placeholder="メモ"></textarea>
+
+      <div class="rating-input">
+        <span data-star="1">★</span>
+        <span data-star="2">★</span>
+        <span data-star="3">★</span>
+        <span data-star="4">★</span>
+        <span data-star="5">★</span>
+      </div>
+
+      <button class="save-btn" onclick="saveMeal()">保存</button>
+      <button class="cancel-btn" onclick="closeModal()">閉じる</button>
+    </div>
+  </div>
+
+  <script>
+    let currentMeal = "night";
+    let currentRating = 0;
+    let currentDate = null;
+
+    let data = JSON.parse(localStorage.getItem("mealData") || "{}");
+
+    function openModal(date) {
+      currentDate = date;
+      currentMeal = "night";
+      currentRating = 0;
+      document.getElementById("input-dish").value = "";
+      document.getElementById("input-ingredients").value = "";
+      document.getElementById("input-memo").value = "";
+      document.querySelectorAll(".rating-input span").forEach(s => s.classList.remove("active"));
+      document.querySelectorAll(".meal-select button").forEach(btn => btn.classList.remove("active"));
+      document.getElementById("btn-night").classList.add("active");
+      document.getElementById("modal").classList.add("show");
+    }
+
+    function closeModal() {
+      document.getElementById("modal").classList.remove("show");
+    }
+
+    function selectMeal(type) {
+      currentMeal = type;
+      document.querySelectorAll(".meal-select button").forEach(btn => btn.classList.remove("active"));
+      document.getElementById("btn-" + type).classList.add("active");
+    }
+
+    document.querySelectorAll(".rating-input span").forEach(star => {
+      star.addEventListener("click", () => {
+        currentRating = Number(star.dataset.star);
+        document.querySelectorAll(".rating-input span").forEach(s => {
+          s.classList.toggle("active", Number(s.dataset.star) <= currentRating);
+        });
+      });
+    });
+
+    function saveMeal() {
+      const dish = document.getElementById("input-dish").value;
+      const ingredients =
