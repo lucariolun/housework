@@ -3,24 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <title>献立記録</title>
+
   <style>
     body {
       margin: 0;
       font-family: sans-serif;
       background: #fafafa;
+      overflow: hidden;
+    }
+
+    .top-link {
+      width: 100%;
+      text-align: center;
+      padding: 10px 0;
+      font-size: 14px;
+    }
+
+    .top-link a {
+      color: #666;
+      text-decoration: none;
     }
 
     .days-wrapper {
       display: flex;
-      overflow-x: auto;
+      overflow-x: scroll;
       scroll-snap-type: x mandatory;
       width: 100%;
-      height: 100vh;
+      height: calc(100vh - 40px);
+      scroll-behavior: smooth;
     }
 
     .day-page {
       min-width: 100%;
-      scroll-snap-align: start;
+      scroll-snap-align: center;
       padding: 16px;
       box-sizing: border-box;
     }
@@ -71,6 +86,7 @@
       padding: 16px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       min-height: 100px;
+      cursor: pointer;
     }
 
     .morning { background: #fffbe6; }
@@ -203,28 +219,13 @@
 
 <body>
 
-  <div class="days-wrapper">
-
-    <div class="day-page" data-date="2026-02-03">
-      <div class="header">
-        <div class="date-text">2/3（火）</div>
-        <button class="add-btn" onclick="openModal('2026-02-03')">＋</button>
-        <button class="csv-btn" onclick="exportCSV()">CSV</button>
-      </div>
-      <div class="cards" id="cards-2026-02-03"></div>
-    </div>
-
-    <div class="day-page" data-date="2026-02-04">
-      <div class="header">
-        <div class="date-text">2/4（水）</div>
-        <button class="add-btn" onclick="openModal('2026-02-04')">＋</button>
-        <button class="csv-btn" onclick="exportCSV()">CSV</button>
-      </div>
-      <div class="cards" id="cards-2026-02-04"></div>
-    </div>
-
+  <div class="top-link">
+    <a href="calendar.html">カレンダーを見る</a>
   </div>
 
+  <div class="days-wrapper" id="daysWrapper"></div>
+
+  <!-- モーダル -->
   <div id="modal" class="modal">
     <div class="modal-content">
 
@@ -246,7 +247,7 @@
         <span data-star="5">★</span>
       </div>
 
-      <button class="save-btn" onclick="saveMeal()">保存</button>
+      <button class="save-btn" id="saveButton" onclick="saveMeal()">保存</button>
       <button class="cancel-btn" onclick="closeModal()">閉じる</button>
     </div>
   </div>
@@ -256,22 +257,151 @@
     let currentRating = 0;
     let currentDate = null;
 
+    let editIndex = null;
+    let editDate = null;
+
     let data = JSON.parse(localStorage.getItem("mealData") || "{}");
 
+    const wrapper = document.getElementById("daysWrapper");
+    const pages = [];
+
+    /* -------------------------
+       日付ページを生成する関数
+    -------------------------- */
+    function addDayPage(dateKey) {
+      if (document.getElementById("cards-" + dateKey)) return;
+
+      const d = new Date(dateKey);
+      const y = d.getFullYear();
+      const m = ("0" + (d.getMonth() + 1)).slice(-2);
+      const day = ("0" + d.getDate()).slice(-2);
+      const jp = ["日","月","火","水","木","金","土"][d.getDay()];
+
+      const page = document.createElement("div");
+      page.className = "day-page";
+      page.dataset.date = dateKey;
+
+      page.innerHTML = `
+        <div class="header">
+          <div class="date-text">${m}/${day}（${jp}）</div>
+          <button class="add-btn" onclick="openModal('${dateKey}')">＋</button>
+          <button class="csv-btn" onclick="exportCSV()">CSV</button>
+        </div>
+        <div class="cards" id="cards-${dateKey}"></div>
+      `;
+
+      wrapper.appendChild(page);
+      pages.push(page);
+
+      renderCards(dateKey);
+    }
+
+    /* -------------------------
+       初期生成（前後30日）
+    -------------------------- */
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    for (let i = -30; i <= 30; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+
+      const y = d.getFullYear();
+      const m = ("0" + (d.getMonth() + 1)).slice(-2);
+      const day = ("0" + d.getDate()).slice(-2);
+
+      addDayPage(`${y}-${m}-${day}`);
+    }
+
+    /* -------------------------
+       URL パラメータでジャンプ
+    -------------------------- */
+    const params = new URLSearchParams(location.search);
+    const jumpDate = params.get("date");
+
+    if (jumpDate) {
+      addDayPage(jumpDate);
+      const target = pages.find(p => p.dataset.date === jumpDate);
+      if (target) target.scrollIntoView({ behavior: "instant" });
+    } else {
+      const todayKey = `${today.getFullYear()}-${("0"+(today.getMonth()+1)).slice(-2)}-${("0"+today.getDate()).slice(-2)}`;
+      const todayPage = pages.find(p => p.dataset.date === todayKey);
+      if (todayPage) todayPage.scrollIntoView({ behavior: "instant" });
+    }
+
+    /* -------------------------
+       スワイプ吸着
+    -------------------------- */
+    let isScrolling;
+    wrapper.addEventListener("scroll", () => {
+      clearTimeout(isScrolling);
+      isScrolling = setTimeout(() => {
+        let closest = null;
+        let minDist = Infinity;
+
+        pages.forEach(p => {
+          const rect = p.getBoundingClientRect();
+          const dist = Math.abs(rect.left);
+          if (dist < minDist) {
+            minDist = dist;
+            closest = p;
+          }
+        });
+
+        closest.scrollIntoView({ behavior: "smooth" });
+      }, 80);
+    });
+
+    /* -------------------------
+       モーダル
+    -------------------------- */
     function openModal(date) {
       currentDate = date;
-      currentMeal = "night";
-      currentRating = 0;
+      editIndex = null;
+      editDate = null;
+
       document.getElementById("input-dish").value = "";
       document.getElementById("input-ingredients").value = "";
       document.getElementById("input-memo").value = "";
-      document.querySelectorAll(".rating-input span").forEach(s => s.classList.remove("active"));
+
+      currentMeal = "night";
       document.querySelectorAll(".meal-select button").forEach(btn => btn.classList.remove("active"));
       document.getElementById("btn-night").classList.add("active");
+
+      currentRating = 0;
+      document.querySelectorAll(".rating-input span").forEach(s => s.classList.remove("active"));
+
+      document.getElementById("saveButton").textContent = "保存";
+
+      document.getElementById("modal").classList.add("show");
+    }
+
+    function openEditModal(date, index, item) {
+      currentDate = date;
+      editDate = date;
+      editIndex = index;
+
+      document.getElementById("input-dish").value = item.dish;
+      document.getElementById("input-ingredients").value = item.ingredients.join(" ");
+      document.getElementById("input-memo").value = item.memo;
+
+      currentMeal = item.type;
+      document.querySelectorAll(".meal-select button").forEach(btn => btn.classList.remove("active"));
+      document.getElementById("btn-" + item.type).classList.add("active");
+
+      currentRating = item.rating;
+      document.querySelectorAll(".rating-input span").forEach(s => {
+        s.classList.toggle("active", Number(s.dataset.star) <= currentRating);
+      });
+
+      document.getElementById("saveButton").textContent = "更新";
+
       document.getElementById("modal").classList.add("show");
     }
 
     function closeModal() {
+      editIndex = null;
+      editDate = null;
       document.getElementById("modal").classList.remove("show");
     }
 
@@ -290,6 +420,125 @@
       });
     });
 
+    /* -------------------------
+       保存
+    -------------------------- */
     function saveMeal() {
       const dish = document.getElementById("input-dish").value;
-      const ingredients =
+      const ingredients = document.getElementById("input-ingredients").value.split(" ").filter(x => x);
+      const memo = document.getElementById("input-memo").value;
+
+      if (!data[currentDate]) data[currentDate] = [];
+
+      const newItem = {
+        dish,
+        ingredients,
+        memo,
+        rating: currentRating,
+        type: currentMeal
+      };
+
+      if (editIndex !== null) {
+        data[editDate][editIndex] = newItem;
+      } else {
+        data[currentDate].push(newItem);
+      }
+
+      localStorage.setItem("mealData", JSON.stringify(data));
+
+      renderCards(currentDate);
+
+      editIndex = null;
+      editDate = null;
+
+      closeModal();
+    }
+
+    /* -------------------------
+       削除
+    -------------------------- */
+    function deleteMeal(date, index) {
+      data[date].splice(index, 1);
+      localStorage.setItem("mealData", JSON.stringify(data));
+      renderCards(date);
+    }
+
+    /* -------------------------
+       カード描画
+    -------------------------- */
+    function renderCards(date) {
+      const container = document.getElementById("cards-" + date);
+      if (!container) return;
+
+      container.innerHTML = "";
+
+      const items = (data[date] || []).slice().sort((a, b) => {
+        const order = { morning: 1, noon: 2, night: 3 };
+        return order[a.type] - order[b.type];
+      });
+
+      items.forEach((item, index) => {
+        const card = document.createElement("div");
+        card.className = "meal-card " + item.type;
+
+        const stars = "★".repeat(item.rating || 0);
+
+        card.innerHTML = `
+          <div class="meal-type-label">
+            ${item.type === "morning" ? "朝" : item.type === "noon" ? "昼" : "夜"}
+          </div>
+
+          <div class="delete-btn" onclick="event.stopPropagation(); deleteMeal('${date}', ${index})">×</div>
+
+          <div class="dish-name">${item.dish}</div>
+          <div class="stars">${stars}</div>
+          <div class="ingredients">
+            ${item.ingredients.map(i => `<span class="tag">${i}</span>`).join("")}
+          </div>
+          <div class="memo">${item.memo}</div>
+        `;
+
+        card.addEventListener("click", () => {
+          openEditModal(date, index, item);
+        });
+
+        container.appendChild(card);
+      });
+    }
+
+    /* -------------------------
+       CSV 出力
+    -------------------------- */
+    function exportCSV() {
+      let rows = [["date", "type", "dish", "ingredients", "memo", "rating"]];
+
+      for (let date in data) {
+        data[date].forEach(item => {
+          rows.push([
+            date,
+            item.type,
+            item.dish,
+            item.ingredients.join(" "),
+            item.memo,
+            item.rating
+          ]);
+        });
+      }
+
+      let csvContent = rows.map(e => e.join(",")).join("\n");
+      let blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+
+      let link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "menu-data.csv";
+      link.click();
+    }
+
+    /* -------------------------
+       初期描画
+    -------------------------- */
+    Object.keys(data).forEach(date => renderCards(date));
+  </script>
+
+</body>
+</html>

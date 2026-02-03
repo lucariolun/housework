@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>カレンダー</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #fafafa;
+    }
+
+    .header {
+      text-align: center;
+      padding: 12px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #444;
+    }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .day-name {
+      text-align: center;
+      font-size: 14px;
+      color: #666;
+      padding: 6px 0;
+    }
+
+    .day {
+      background: white;
+      border-radius: 8px;
+      padding: 4px;
+      min-height: 80px;
+      max-height: 120px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .day-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      position: sticky;
+      top: 0;
+      background: white;
+      padding-bottom: 2px;
+      z-index: 2;
+    }
+
+    .day-number {
+      font-size: 11px;
+      color: #666;
+    }
+
+    .day-stars {
+      font-size: 10px;
+      color: #f5b700;
+      margin-left: auto;
+    }
+
+    .menu-item {
+      font-size: 11px;
+      color: #333;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .today {
+      border: 2px solid #8fd19e;
+      background: #e8f9ee;
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin: 10px 0;
+      color: #666;
+      text-decoration: none;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <a href="kondate.html" class="back-link">← 献立ページに戻る</a>
+
+  <div class="header" id="monthTitle"></div>
+
+  <div class="calendar" id="calendar"></div>
+
+  <script>
+    const calendarEl = document.getElementById("calendar");
+    const monthTitle = document.getElementById("monthTitle");
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const year = today.getFullYear();
+    const month = today.getMonth();
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    const jpWeek = ["日","月","火","水","木","金","土"];
+
+    monthTitle.textContent = `${year}年 ${month + 1}月`;
+
+    const data = JSON.parse(localStorage.getItem("mealData") || "{}");
+
+    jpWeek.forEach(w => {
+      const div = document.createElement("div");
+      div.className = "day-name";
+      div.textContent = w;
+      calendarEl.appendChild(div);
+    });
+
+    for (let i = 0; i < firstDay.getDay(); i++) {
+      const empty = document.createElement("div");
+      calendarEl.appendChild(empty);
+    }
+
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      const date = new Date(year, month, d);
+      const y = year;
+      const m = ("0" + (month + 1)).slice(-2);
+      const day = ("0" + d).slice(-2);
+      const key = `${y}-${m}-${day}`;
+
+      const div = document.createElement("div");
+      div.className = "day";
+
+      if (date.getTime() === today.getTime()) {
+        div.classList.add("today");
+      }
+
+      // --- 日付＋最高★のヘッダー ---
+      const header = document.createElement("div");
+      header.className = "day-header";
+
+      const num = document.createElement("div");
+      num.className = "day-number";
+      num.textContent = d;
+      header.appendChild(num);
+
+      // 最高★数を計算
+      if (data[key] && data[key].length > 0) {
+        const maxRating = Math.max(...data[key].map(i => i.rating || 0));
+        if (maxRating > 0) {
+          const stars = document.createElement("div");
+          stars.className = "day-stars";
+          stars.textContent = "★".repeat(maxRating);
+          header.appendChild(stars);
+        }
+      }
+
+      div.appendChild(header);
+
+      // --- メニューを3つまで表示 ---
+      if (data[key] && data[key].length > 0) {
+        const items = data[key];
+
+        items.slice(0, 3).forEach(item => {
+          const menu = document.createElement("div");
+          menu.className = "menu-item";
+          menu.textContent = item.dish;
+          div.appendChild(menu);
+        });
+
+        if (items.length > 3) {
+          const more = document.createElement("div");
+          more.className = "menu-item";
+          more.textContent = `…他 ${items.length - 3} 件`;
+          div.appendChild(more);
+        }
+      }
+
+      calendarEl.appendChild(div);
+    }
+  </script>
+
+</body>
+</html>
